@@ -1,0 +1,78 @@
+.blog-header {
+	background-color: #ddd;
+	color: #888;
+	padding: 1px 0 10px 40px;
+	margin: 0;
+	height: 80px;
+}
+
+body {
+	margin: 0;
+}
+
+header {
+	height: 120px;
+}
+
+textarea {
+  width: 100%;
+  height: 400px;
+  font-size: 17px;
+  font-family: monospace;
+}
+
+.blog-header-title {
+	margin: 0;
+}
+
+.blog-header-description {
+	color: black;
+	margin: 0;
+}
+/* 
+.menu-container {
+	display: flex;
+	align-content: vertical;
+	background-color: darkgrey;
+	height: 30px;
+	width: 100%;
+}
+
+.menu {
+	display: flex;
+	align-content: vertical;
+	padding:0 40;
+	width: 100%;
+}
+
+.user-info {
+	width: 180px;
+	display: flex;
+	align-content: vertical;
+}
+
+.user-name {
+
+}
+
+.user-image {
+
+}
+
+.post-form {
+	display: block;
+	margin: 0 40px;
+}
+.newPost {
+}
+
+.post-title {
+	width: 100%;
+	margin: 5px 0;
+
+}
+
+.post-text {
+	width: 100%;
+	margin: 5px 0;
+} */

@@ -1,0 +1,44 @@
+{% extends "base.html" %}
+
+
+{% block content %}
+
+<form class="post-form" method="post">
+	<div class="login">
+		<!-- <h2> Login</h2> -->
+
+	
+		<table>
+			<tr>
+				<td>
+					<label class="login-name">Name</label>
+				</td>
+				<td>
+						<input class="login-name-input" type="text" name="name" value ="{{ name }}">
+				</td>
+			</tr>
+			<tr>
+				<td>
+					<label class="login-password">Password</label>
+				</td>
+				<td>
+					<input class=login-password-input"" name="password" value="{{ password }}"></input>
+				</td>
+			</tr>
+			<tr>
+				<td>
+					<button>Login</button>
+				</td>
+			</tr>
+
+			
+			
+		</div>
+	</table>
+		
+</form>
+
+
+
+
+{% endblock %}

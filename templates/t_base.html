@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+
+<html>
+	<head>
+		<link type="text/css" rel="stylesheet" href="/static/style.css" />
+
+		<link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap.min.css" integrity="sha384-BVYiiSIFeK1dGmJRAkycuHAHRg32OmUcww7on3RYdg4Va+PmSTsz/K68vbdEjh4u" crossorigin="anonymous">
+
+		<script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/js/bootstrap.min.js" integrity="sha384-Tc5IQib027qvyjSMfHjOMaLkfuWVxZxUPnCJA7l2mCWNIpG9mGCD8wGNIcPD7Txa" crossorigin="anonymous"></script>
+		
+		<title>
+			FSND - Blog project
+		</title>
+
+
+	</head>
+
+	<!-- <style type="text/css">
+		header {
+			background-color: #ddd;
+			color: #888;
+			padding: 1px 0 10px 40px;
+			margin: 0;
+			height: 110px;
+		}
+	
+		h4 {
+			color: black;
+		}
+	
+	</style>
+	 -->
+	<body>
+		<div class="blog-header">
+			<h1 class="blog-header-title">A simple blog</h1>
+			<h4 class="blog-header-description">one of the projects in Udacity´s Full Stack Web Developer Nanodegree</h4>
+		</div>
+
+
+		<nav class="my-nav">
+			<ul>
+				<li>Home</li>
+				<li>Blog</li>
+				<li>Sign in</li>
+			</ul>
+		</nav>
+
+	
+			{% block content %}
+			{% endblock %}
+		
+	</body>
+</html>
