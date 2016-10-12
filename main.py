@@ -35,7 +35,7 @@ SECRET = 'somethingsecret'
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG)
 
-logger.info('info')
+logger.info('todays sickness')
 logger.debug('debug')
 
 def blog_key(name = 'default'):
@@ -81,6 +81,22 @@ def valid_cookie(cookie):
     else:
         return False
 
+def loggedInUser(cookie):
+    if cookie:
+        user_data = cookie.split('|', 1)
+
+        logger.info('user_data: %s , %s' % (user_data[0], user_data[1]))
+        user = db.GqlQuery("SELECT * FROM User WHERE name = '%s' AND pw_hash ='%s'" % (user_data[0], user_data[1])).get()
+        if user:
+            logger.info('valid cookie() db.GqlQuery : user =%s' % (user.name))
+            
+            return user_data[0]
+
+    # If no cookie or no match in user DB then return False
+    return False
+
+
+
 class User(db.Model):
     name = db.StringProperty(required = True)
     pw_hash = db.StringProperty(required = True)
@@ -108,6 +124,21 @@ class Handler(webapp2.RequestHandler):
 
     def render(self, template, **kw):
         self.write(self.render_str(template, **kw))
+
+    def loggedInUser(self):
+        cookie = self.request.cookies.get('user')
+        if cookie:
+            user_data = cookie.split('|', 1)
+
+            logger.info('user_data: %s , %s' % (user_data[0], user_data[1]))
+            user = db.GqlQuery("SELECT * FROM User WHERE name = '%s' AND pw_hash ='%s'" % (user_data[0], user_data[1])).get()
+            if user:
+                logger.info('valid cookie() db.GqlQuery : user =%s' % (user.name))
+                
+                return user_data[0]
+
+        # If no cookie or no match in user DB then return False
+        return False
 
 
 
@@ -137,12 +168,26 @@ class MakeBlogPost(Handler):
         self.render('new-post.html', title = title, text = text)
 
     def get(self):
-        self.render('new-post.html')
+        user = self.loggedInUser()
+        if user:
+            self.render('new-post.html', user = user)
+        else:
+            self.redirect('/blog')
+
+
 
     def post(self):
+        user = loggedInUser()
+        if user:
+            self.render('new-post.html', user = user)
+        else:
+            self.redirect('/blog')
+     
+
         post_title = self.request.get('title')
         post_text = self.request.get('text')
 
+        
         params = dict(title = post_title, text = post_text)
 
         if post_title and post_text:
@@ -157,15 +202,16 @@ class MakeBlogPost(Handler):
 
 class Signup(Handler):
     def get(self):
-        user_cookie = self.request.cookies.get('user')
-        logger.debug("user_cookie=%s" % user_cookie)
-        if valid_cookie(user_cookie):
+        # user_cookie = self.request.cookies.get('user')
+        # logger.debug("nonvalid user_cookie=%s" % user_cookie)
+
+        if self.loggedInUser():
             self.redirect('/blog')
         else:
             self.render('signup.html')
 
     def post(self):
-        self.response.headers['Content-Type'] = 'text/plain'
+        # self.response.headers['Content-Type'] = 'text/plain'
 
         have_error = False
         username = self.request.get('username')
@@ -200,19 +246,26 @@ class Signup(Handler):
             if email:
                 user_params['email'] = email
             u = User(**user_params)
+            logging.info('sign up post call :%s' % u)
             u.put()
             self.response.headers.add_header('Set-Cookie', 'user=%s|%s' % (str(username), user_params['pw_hash']))
+            
             self.redirect('/shopping_list')
 
 class Blog(Handler):
     def get(self):
         items = db.GqlQuery("SELECT * FROM Item ORDER BY created DESC")
-        self.render('blog.html', items = items)
+        self.render('blog.html', items = items, user = self.loggedInUser())
         logger.debug("another bug test")
 
 class Login(Handler):
     def get(self):
         self.render('login.html')
+
+class Logout(Handler):
+    def get(self):
+        self.response.headers.add_header('Set-Cookie', 'user=')
+        self.redirect('/blog')
 
 
 class Welcome(Handler):
@@ -242,5 +295,6 @@ app = webapp2.WSGIApplication([
     ('/shopping_list', Welcome),
     ('/new-post', MakeBlogPost),
     ('/blog', Blog),
-    ('/login', Login)
+    ('/login', Login),
+    ('/logout', Logout)
 ], debug=True)
