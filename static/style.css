@@ -6,10 +6,28 @@
 	height: 80px;
 }
 
-body {
+.Username {
+}
+
+.label {
+	color: #877;
+}
+
+
+html, body {
+    margin: 0;
+    height: 100%;
+}
+
+
+/*body {
 	margin: 0;
 }
 
+html {
+	height: 100%;
+}
+*/
 header {
 	height: 120px;
 }
@@ -28,6 +46,11 @@ textarea {
 .blog-header-description {
 	color: black;
 	margin: 0;
+}
+
+.welcome-message {
+	height: 100%;
+	width: 100%;
 }
 /* 
 .menu-container {

@@ -14,6 +14,8 @@
 import os
 import re
 
+from google.appengine.api import memcache
+
 from string import letters
 from google.appengine.ext import db
 
@@ -31,21 +33,15 @@ jinja_env = jinja2.Environment(loader = jinja2.FileSystemLoader(template_dir),
 
 SECRET = 'somethingsecret'
 
-
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG)
 
-logger.info('todays sickness')
-logger.debug('debug')
 
 def blog_key(name = 'default'):
     return db.Key.from_path('blogs', name)
 
 def make_salt():
     return ''.join(random.choice(letters) for i in xrange(5))
-
-# def hash_str(s):
-#     return hmac.new(SECRET, s).hexdigest()
 
 
 def make_pw_hash(name, pw, salt = None):
@@ -56,45 +52,69 @@ def make_pw_hash(name, pw, salt = None):
     return "%s|%s" % (h, salt)
 
 
-def valid_pw(name, pw, h):
-    if h == make_pw_hash(name, pw, h[1]):
-        return True
-    else:
-        return False
-
 def valid_cookie(cookie):
     if cookie:
         user_data = cookie.split('|', 1)
-
-        logger.info('user_data: %s , %s' % (user_data[0], user_data[1]))
         user = db.GqlQuery("SELECT * FROM User WHERE name = '%s' AND pw_hash ='%s'" % (user_data[0], user_data[1])).get()
-         # %s" % (str(user_data[0])))
-            # AND pw_hash = %s" % (user_data[0], user_data[1]))
-        logger.info('valid cookie() db.GqlQuery : user =%s' % (user.name))
-
         return True
 
-        # if user:
-        #     return True
-        # else:
-        #     return False
     else:
         return False
 
+
+
+def validPwHash(user, pw):
+    hash = memcache.get(key = user)
+
+    if hash is None:
+        user_data = db.GqlQuery("SELECT * FROM User WHERE name = '%s'" % (user), read_policy=db.STRONG_CONSISTENCY).get()
+        # Question : Correct syntax regarding the "read_policy=db.STRONG_CONSISTENCY" part ?
+
+        if user_data:
+            hash = user_data.pw_hash
+            salt = user_data.pw_hash.split('|')[1]
+            if hash == make_pw_hash(user, pw, salt):
+                if not memcache.add(key = user, value = hash):
+                    logging.debug('Memcache add failed.')
+                return hash
+    else:
+        salt = hash.split('|')[1]
+        if hash == make_pw_hash(user, pw, salt):
+            return hash
+
+    return False
+
+
+    if userData  is not None:
+        salt = userData.pw_hash.split('|', 1)[1]
+
+        if userData.pw_hash == make_pw_hash(user, pw, salt):
+            return userData.pw_hash
+
+    return False
+
 def loggedInUser(cookie):
+    user = None
+
+    logging.info('-------------------- cookie : %s' % cookie)
+
+    # cookie = self.request.cookies.get('user')
     if cookie:
         user_data = cookie.split('|', 1)
 
-        logger.info('user_data: %s , %s' % (user_data[0], user_data[1]))
-        user = db.GqlQuery("SELECT * FROM User WHERE name = '%s' AND pw_hash ='%s'" % (user_data[0], user_data[1])).get()
+    hash = memcache.get(user_data[0])
+
+    if hash is None:
+        user = db.GqlQuery("SELECT * FROM User WHERE name = '%s' AND pw_hash ='%s'" % (user_data[0], user_data[1]), read_policy=db.STRONG_CONSISTENCY).get()
         if user:
-            logger.info('valid cookie() db.GqlQuery : user =%s' % (user.name))
-            
-            return user_data[0]
+            hash = user.pw_hash
+            if not memcache.add(key = user.name, value = user.pw_hash):
+                logging.error('Memcache add failed.')
 
-    # If no cookie or no match in user DB then return False
-    return False
-
+    if user_data[1] == hash:
+        return user_data[0]
+    else:
+        return None
 
 
 class User(db.Model):
@@ -112,7 +132,7 @@ class Item(db.Model):
 
 
 
-pw_hash = make_pw_hash('me', 'admin')
+# pw_hash = make_pw_hash('me', 'admin')
 
 class Handler(webapp2.RequestHandler):
     def write(self, *a, **kw):
@@ -127,18 +147,22 @@ class Handler(webapp2.RequestHandler):
 
     def loggedInUser(self):
         cookie = self.request.cookies.get('user')
+        logging.info('loggedInUser() cookie = %s' % cookie)
         if cookie:
             user_data = cookie.split('|', 1)
 
             logger.info('user_data: %s , %s' % (user_data[0], user_data[1]))
-            user = db.GqlQuery("SELECT * FROM User WHERE name = '%s' AND pw_hash ='%s'" % (user_data[0], user_data[1])).get()
+            user = db.GqlQuery("SELECT * FROM User WHERE name = '%s' AND pw_hash ='%s'" % (user_data[0], user_data[1]), read_policy=db.STRONG_CONSISTENCY).get()
             if user:
                 logger.info('valid cookie() db.GqlQuery : user =%s' % (user.name))
                 
                 return user_data[0]
 
-        # If no cookie or no match in user DB then return False
-        return False
+            # If no cookie or no match in user DB then return False
+            else:
+                logging.info('FAILED! loggedInUser(): user =%s' % user)
+                return False
+
 
 
 
@@ -177,7 +201,7 @@ class MakeBlogPost(Handler):
 
 
     def post(self):
-        user = loggedInUser()
+        user = self.loggedInUser()
         if user:
             self.render('new-post.html', user = user)
         else:
@@ -240,27 +264,67 @@ class Signup(Handler):
         if have_error:
             self.render('signup.html', **params)
         else:
-            user_params = {}
-            user_params['name'] = username
-            user_params['pw_hash'] = make_pw_hash(username, password)
-            if email:
-                user_params['email'] = email
-            u = User(**user_params)
-            logging.info('sign up post call :%s' % u)
-            u.put()
-            self.response.headers.add_header('Set-Cookie', 'user=%s|%s' % (str(username), user_params['pw_hash']))
-            
-            self.redirect('/shopping_list')
+            isUserInDB = db.GqlQuery("SELECT * FROM User WHERE name = '%s'" % username).get()
+            if isUserInDB:
+                params['error_username'] = 'Username not available.'
+                self.render('signup.html', **params)
 
-class Blog(Handler):
-    def get(self):
-        items = db.GqlQuery("SELECT * FROM Item ORDER BY created DESC")
-        self.render('blog.html', items = items, user = self.loggedInUser())
-        logger.debug("another bug test")
+            else:
+                user_params = {}
+                user_params['name'] = username
+                user_params['pw_hash'] = make_pw_hash(username, password)
+                if email:
+                    user_params['email'] = email
+                
+
+                u = User(**user_params)
+                u.put()
+                self.response.headers.add_header('Set-Cookie', 'user=%s|%s' % (str(username), user_params['pw_hash']))
+                memcache.add( key = username, value = user_params['pw_hash'])
+                self.redirect('/blog')
 
 class Login(Handler):
     def get(self):
         self.render('login.html')
+
+    def post(self):
+        have_error = False
+        username = self.request.get('username')
+        password = self.request.get('password')
+
+        params = dict(username = username)
+
+        if not valid_username(username):
+            params['error_username'] = 'Not valid username.'
+            have_error = True
+            # logging.info('login have_error username =%s' % username)
+
+
+        if not valid_password(password):
+            params['error_password'] = 'Not valid password.'
+            have_error = True
+            # logging.info('login have_error password =%s' % password)
+
+
+        # logging.info('login have_error =%s' % have_error)
+
+        if not have_error:
+            # logging.info('login=%s' % (validUser(username, password)))
+            pw_hash = validPwHash(username, password)
+            if  pw_hash:
+                # pw_hash = make_pw_hash(username, password)
+                self.response.headers.add_header('Set-Cookie', 'user=%s|%s' % (str(username), (str(pw_hash))))
+                memcache.add(key='current_user', value=username, time=3600)
+                self.redirect('/welcome')
+            else:
+                params['error_username'] = 'Not valid username and/or password.'
+                self.render('/login.html', **params)
+            
+
+class Welcome(Handler):
+    def get(self):
+        self.render('welcome.html')
+
 
 class Logout(Handler):
     def get(self):
@@ -268,23 +332,36 @@ class Logout(Handler):
         self.redirect('/blog')
 
 
-class Welcome(Handler):
+class Blog(Handler):
     def get(self):
-        user_cookie = self.request.cookies.get('user')
-        if user_cookie:
-            self.render('shopping_list.html', user = user_cookie.split('|')[0])
-        else:
-            self.render('shopping_list.html', user = 'unknown')
-        # user_cookie = self.request.cookies.get('user')
-        # if user_cookie:
-        #     self.render('shopping_list.html', user = user_cookie)
+        current_user = None
+
+        # if current_user:
+        #     logging.info('user %s logged in' % current_user)
         # else:
-        # self.redirect('/signup')
+        #     logging.info('no user user is logged in')
+
+        # if not current_user:
+
+
+        cookie = self.request.cookies.get('user')
+        if cookie:
+            current_user = loggedInUser(cookie) # None if no user is logged in.
+
+                
+        items = db.GqlQuery("SELECT * FROM Item ORDER BY created DESC")
+        params = dict(items = items)
+
+        if current_user is not None:
+            params['user'] = current_user
+
+        self.render('blog.html', **params)
+
 
     def post(self):
-        user_cookie = self.request.cookies.get('user')
-        if user_cookie:
-            self.render('shopping_list.html', user = user_cookie)
+        user = self.loggedInUser()
+        if user:
+            self.render('blog.html', user = user)
         else:
             self.redirect('/signup')
 
@@ -292,9 +369,9 @@ class Welcome(Handler):
 app = webapp2.WSGIApplication([
     ('/', MainPage),
     ('/signup', Signup), 
-    ('/shopping_list', Welcome),
     ('/new-post', MakeBlogPost),
     ('/blog', Blog),
     ('/login', Login),
+    ('/welcome', Welcome),
     ('/logout', Logout)
 ], debug=True)

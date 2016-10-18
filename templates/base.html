@@ -2,13 +2,13 @@
 
 <html>
 	<head>
-		<link type="text/css" rel="stylesheet" href="/static/style.css" />
-
 		<link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap.min.css" integrity="sha384-BVYiiSIFeK1dGmJRAkycuHAHRg32OmUcww7on3RYdg4Va+PmSTsz/K68vbdEjh4u" crossorigin="anonymous">
 
 		<script src="https://ajax.googleapis.com/ajax/libs/jquery/3.1.1/jquery.min.js"></script>
 
 		<script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/js/bootstrap.min.js" integrity="sha384-Tc5IQib027qvyjSMfHjOMaLkfuWVxZxUPnCJA7l2mCWNIpG9mGCD8wGNIcPD7Txa" crossorigin="anonymous"></script>
+		
+		<link type="text/css" rel="stylesheet" href="/static/style.css" />
 		
 		<title>
 			FSND - Blog project
@@ -17,43 +17,34 @@
 
 	</head>
 
-	<!-- <style type="text/css">
-		header {
-			background-color: #ddd;
-			color: #888;
-			padding: 1px 0 10px 40px;
-			margin: 0;
-			height: 110px;
-		}
-	
-		h4 {
-			color: black;
-		}
-	
-	</style>
-	 -->
 	<body>
-		<div class="blog-header">
-			<h1 class="blog-header-title">A simple blog</h1>
-			<h4 class="blog-header-description">one of the projects in Udacity´s Full Stack Web Developer Nanodegree</h4>
-		</div>
+		<!-- <div class="blog-header">
+			<h1 class="blog-header-title">a Full Stack Web Developer Nanodegree project</h1>
+		</div> -->
 
 
 		<nav class="navbar navbar-inverse">
 			<div class="container-fluid">
 				<div class="navbar-header">
-					<a class="navbar-brand" href="#">WebSiteName</a>
+					<a class="navbar-brand" href="#">theBlog</a>
 				</div>
 				
-				<ul class="nav navbar-nav">
-					<li class="active"><a href="/blog">Blog</a></li>
+				<ul class="nav navbar-nav nav-links">
+					<li><a href="/blog">Blog</a></li>
 					<li><a href="/new-post">New Post</a></li>
 					<li><a href="#">Page 2</a></li> 
 				</ul>
 				
 				<ul class="nav navbar-nav navbar-right">
-					<li><a href="/signup"><span class="glyphicon glyphicon-user"></span> Sign Up</a></li>
-					<li><a href="/logout"><span class="glyphicon glyphicon-log-in"></span> Login</a></li>
+					{% if user %}
+						<!-- <li><label> {{ user }}</label></li> -->
+						<li><a href="/logout"><span class="glyphicon glyphicon-remove"></span> {{ user }}</a></li>
+					{%  else %}
+						<li><a href="/signup"><span class="glyphicon glyphicon-user"></span> Sign Up</a></li>
+						<li><a href="/login"><span class="glyphicon glyphicon-log-in"></span> Login</a></li>
+					{% endif %}
+
+					
 				</ul>
 			</div>
 		</nav>
