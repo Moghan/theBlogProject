@@ -2,18 +2,20 @@
 
 {% block content %}
 
-Inside blog !!!!!!
-
-<h1>Hello {{ user }}</h1>
-
 {% if items %}
 	{% for item in items %}
 
-		<div class="post">
-			<div class="title">{{ item.title }}</div>
-			<pre class="text">{{ item.text }}</pre>
-		</div>
-		<hr>
+		<form method='post'>
+			<input type="hidden" name="edit_postID" value="{{ item.key()}}">
+			<div class="post">
+				<div class="title">{{ item.title }}</div>
+				<pre class="text">{{ item.text }}</pre>
+			</div>
+			<hr>
+			{% if user == item.creator %}
+				<button>Edit</button>
+			{% endif %}
+		</form>
 
 	{% endfor %}
 {% endif %}

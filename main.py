@@ -62,6 +62,10 @@ def valid_cookie(cookie):
         return False
 
 
+def render_str(template, **params):
+    t = jinja_env.get_template(template)
+    return t.render(params)
+
 
 def validPwHash(user, pw):
     hash = memcache.get(key = user)
@@ -129,6 +133,11 @@ class Item(db.Model):
     title = db.StringProperty(required = True)
     text = db.TextProperty(required = True)
     created = db.DateTimeProperty(auto_now_add = True)
+    creator = db.StringProperty(required = True)
+
+    def render(self):
+        self._render_text = self.text.replace('\n', '<br>')
+        return render_str('post.html', p = self)
 
 
 
@@ -215,12 +224,54 @@ class MakeBlogPost(Handler):
         params = dict(title = post_title, text = post_text)
 
         if post_title and post_text:
-            i = Item(title = post_title, text = post_text)
+            i = Item(parent = blog_key(), title = post_title, text = post_text, creator = user)
             i.put()
-            self.redirect('/blog')
+            self.redirect('/blog/%s' % str(i.key().id()))
         else:
             self.render_front(**params)
 
+class EditPost(Handler):
+    def render_front(self, title = "", text = ""):
+        self.render('edit-post.html', title = title, text = text)
+
+    def post(self):
+        user = self.loggedInUser()
+        logging.info('EditPost()')
+
+        if user:
+            self.render('edit-post.html', user = user)
+        else:
+            self.redirect('/blog')
+
+
+        post_title = self.request.get('title')
+        post_text = self.request.get('text')
+
+        params = dict(title = post_title, text = post_text)
+
+        if post_title and post_text:
+            key = db.Key.from_path('Item', int(post_id), parent=blog_key())
+            post = db.get(key)
+            post.title = post_title
+            post.text = post_text
+            post.put()
+
+            self.redirect('/blog/%s' % str(post.key().id()))
+        else:
+            self.render_front(**params)
+
+        
+
+class PostPage(Handler):
+    def get(self, post_id):
+        key = db.Key.from_path('Item', int(post_id), parent=blog_key())
+        post = db.get(key)
+
+        if not post:
+            self.error(404)
+            return
+
+        self.render("permalink.html", post = post)
 
 
 
@@ -281,7 +332,7 @@ class Signup(Handler):
                 u.put()
                 self.response.headers.add_header('Set-Cookie', 'user=%s|%s' % (str(username), user_params['pw_hash']))
                 memcache.add( key = username, value = user_params['pw_hash'])
-                self.redirect('/blog')
+                self.redirect('/welcome')
 
 class Login(Handler):
     def get(self):
@@ -309,13 +360,13 @@ class Login(Handler):
         # logging.info('login have_error =%s' % have_error)
 
         if not have_error:
-            # logging.info('login=%s' % (validUser(username, password)))
             pw_hash = validPwHash(username, password)
+            logging.info('pw_hash=%s' % (pw_hash))
             if  pw_hash:
                 # pw_hash = make_pw_hash(username, password)
                 self.response.headers.add_header('Set-Cookie', 'user=%s|%s' % (str(username), (str(pw_hash))))
                 memcache.add(key='current_user', value=username, time=3600)
-                self.redirect('/welcome')
+                self.redirect('/blog')
             else:
                 params['error_username'] = 'Not valid username and/or password.'
                 self.render('/login.html', **params)
@@ -334,6 +385,7 @@ class Logout(Handler):
 
 class Blog(Handler):
     def get(self):
+        logging.info('blog GET')
         current_user = None
 
         # if current_user:
@@ -352,6 +404,9 @@ class Blog(Handler):
         items = db.GqlQuery("SELECT * FROM Item ORDER BY created DESC")
         params = dict(items = items)
 
+        # for item in items:
+        #     logging.info(item.ID)
+
         if current_user is not None:
             params['user'] = current_user
 
@@ -359,9 +414,17 @@ class Blog(Handler):
 
 
     def post(self):
+        logging.info('****************************************************** blog POST')
         user = self.loggedInUser()
+        logging.info('user editing : %s' % user)
         if user:
-            self.render('blog.html', user = user)
+            # self.render('blog.html', user = user)
+            edit_postID = self.request.get('edit_postID')
+            item = db.get(edit_postID)
+            logging.info('edit postID : %s' % edit_postID)
+            logging.info('edit item.text : %s' % item.text)
+            params = dict(item = item, user = user)
+            self.render('edit-post.html', **params)
         else:
             self.redirect('/signup')
 
@@ -370,8 +433,10 @@ app = webapp2.WSGIApplication([
     ('/', MainPage),
     ('/signup', Signup), 
     ('/new-post', MakeBlogPost),
+    ('/edit-post', EditPost),
     ('/blog', Blog),
     ('/login', Login),
     ('/welcome', Welcome),
+    ('/blog/([0-9]+)', PostPage),
     ('/logout', Logout)
 ], debug=True)
