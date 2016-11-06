@@ -23,6 +23,7 @@ import webapp2
 import jinja2
 
 import logging
+import datetime
 
 import hmac
 import random
@@ -357,7 +358,7 @@ class Login(Handler):
             # logging.info('login have_error password =%s' % password)
 
 
-        # logging.info('login have_error =%s' % have_error)
+        logging.info('login have_error =%s' % have_error)
 
         if not have_error:
             pw_hash = validPwHash(username, password)
@@ -369,7 +370,8 @@ class Login(Handler):
                 self.redirect('/blog')
             else:
                 params['error_username'] = 'Not valid username and/or password.'
-                self.render('/login.html', **params)
+        
+        self.render('/login.html', **params)
             
 
 class Welcome(Handler):
@@ -403,7 +405,18 @@ class Blog(Handler):
                 
         items = db.GqlQuery("SELECT * FROM Item ORDER BY created DESC")
         params = dict(items = items)
+        # params['commentable'] = 'commentable'
+        # logging.info('---------------  %s' % items[0].key().id())
 
+        timeMessages = []
+
+        a = 0
+
+        for item in items:
+            timeMessages.append('secondd try: %s' % str(a))
+            a = a+1
+
+        params['timeMessages'] = timeMessages
         # for item in items:
         #     logging.info(item.ID)
 
@@ -420,6 +433,8 @@ class Blog(Handler):
         if user:
             # self.render('blog.html', user = user)
             edit_postID = self.request.get('edit_postID')
+            editButton = self.request.get('editButton')
+            logging.info('editButton = %s' % editButton)
             item = db.get(edit_postID)
             logging.info('edit postID : %s' % edit_postID)
             logging.info('edit item.text : %s' % item.text)

@@ -39,6 +39,10 @@ textarea {
   font-family: monospace;
 }
 
+.comment-text-input {
+	height: 100px;
+}
+
 .blog-header-title {
 	margin: 0;
 }
@@ -51,6 +55,14 @@ textarea {
 .welcome-message {
 	height: 100%;
 	width: 100%;
+}
+
+.hidden {
+	display: none;
+}
+
+.commentable {
+	display: block;
 }
 /* 
 .menu-container {

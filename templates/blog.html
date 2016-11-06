@@ -2,19 +2,40 @@
 
 {% block content %}
 
+<script>
+	function myFunction(mess) {
+		var commentTextID = 'comment' + mess;
+	    document.getElementById("title").innerHTML = commentTextID;
+	    document.getElementById(commentTextID).classList.remove("hidden");
+	}
+</script>
+
 {% if items %}
 	{% for item in items %}
 
 		<form method='post'>
+
+			
+
 			<input type="hidden" name="edit_postID" value="{{ item.key()}}">
 			<div class="post">
-				<div class="title">{{ item.title }}</div>
+				<div class="post-item autor"></div>
+				<div class="post-item time_message">{{ timeMessages.pop(0) }}</div>
+				{% if user == item.creator %}
+					<button name="editButton" value="edit was pressed">Edit</button>
+				{% endif %}
+				<div class="post-item title">{{ item.title }}</div>
 				<pre class="text">{{ item.text }}</pre>
+				{% if user != item.creator %}
+					<button name="likeButton" value="liked was pressed">Like</button>
+				{% endif %}
+				<input type="button" id="button" class="comment {% if user != item.creator %} commentable {% endif %}" name="commentButton" value="comment was pressed" onclick="myFunction( {{ item.key().id() }} )">Comment</button>
+				<textarea id="comment{{ item.key().id() }}" class="comment-text-input hidden" name="text" value="Write here...">textarea</textarea>
+
+
 			</div>
 			<hr>
-			{% if user == item.creator %}
-				<button>Edit</button>
-			{% endif %}
+			
 		</form>
 
 	{% endfor %}
