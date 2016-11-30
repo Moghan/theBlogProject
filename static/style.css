@@ -61,8 +61,36 @@ textarea {
 	display: none;
 }
 
+.comment-button {
+	display: none;
+	background-color: green;
+}
+
+.like-button {
+	margin-top: 15px;
+	height: 20px;
+	width: 70px;
+}
+
 .commentable {
 	display: block;
+	background-color: red;
+}
+
+.post-container {
+	display: -webkit-flex;
+	display: flex;
+}
+
+.post-item {
+	padding: 15px 35px 3px 5px;
+}
+
+.edit-button {
+	margin-top: 50px;
+	height: 20px;
+	width: 70px;
+
 }
 /* 
 .menu-container {

@@ -140,7 +140,9 @@ class Item(db.Model):
         self._render_text = self.text.replace('\n', '<br>')
         return render_str('post.html', p = self)
 
-
+class Lajk(db.Model):
+    comment = db.ReferenceProperty(Item)
+    user = db.ReferenceProperty(User)
 
 # pw_hash = make_pw_hash('me', 'admin')
 
@@ -387,16 +389,8 @@ class Logout(Handler):
 
 class Blog(Handler):
     def get(self):
-        logging.info('blog GET')
         current_user = None
-
-        # if current_user:
-        #     logging.info('user %s logged in' % current_user)
-        # else:
-        #     logging.info('no user user is logged in')
-
-        # if not current_user:
-
+        params = dict()
 
         cookie = self.request.cookies.get('user')
         if cookie:
@@ -404,17 +398,84 @@ class Blog(Handler):
 
                 
         items = db.GqlQuery("SELECT * FROM Item ORDER BY created DESC")
-        params = dict(items = items)
-        # params['commentable'] = 'commentable'
-        # logging.info('---------------  %s' % items[0].key().id())
+        userEntity = db.GqlQuery("SELECT * FROM User WHERE name='%s'" % current_user).get()
+
+        commentDataArray = []
+
+        i = 0
+        for item in items:
+            commentData = {}
+            commentData['number'] = i
+            commentData['item'] = item
+            commentData['timeMessage'] = item.created.strftime("%A %d. %B %Y")
+
+           
+            # logging.info('item.creator = %s' % item.creator)
+            # logging.info('item.text = %s' % item.text)
+
+
+            lajkByCurrentUser = None
+            commentData['liked'] = False
+            
+            numberOfLikes = Lajk.all().ancestor(item.key()).count()
+            commentData['numberOfLikes'] = numberOfLikes
+
+            if current_user:
+                filteredLikes = Lajk.all().ancestor(item.key()).filter("user =", userEntity)
+                itemLiked = Lajk.all().ancestor(item.key()).filter("user =", userEntity).get()
+
+
+
+                # logging.info('number of likes = %s' % allLikes.count())
+                # logging.info('number of Flikes = %s' % filteredLikes.count())
+                
+
+
+                if itemLiked is not None:
+                    lajkByCurrentUser = True
+
+                    logging.info("liked by current user  = %s" % itemLiked.user.name)
+
+                else:
+                    logging.info('NOT liked!')
+
+
+            
+
+
+            if lajkByCurrentUser:
+                commentData['liked'] = True
+                # logging.info('liked by currnet user, set to True')
+                # logging.info('likedByCurrentUser = %s' % likedByCurrentUser.comment)
+                
+
+
+
+            commentDataArray.append(commentData)
+            i += 1
+
+        # for commentData in commentDataArray:
+            # logging.info('commentData.comment.text = %s' % commentData['item'].text)
+            # if commentData['liked']:
+                # logging.info('comment is liked')
+
+
+
+
+
+
+
+        # params = dict(items = items)
+        # params = dict(comments = commentDataArray)
+        params['comments'] = commentDataArray
+
+        
+
 
         timeMessages = []
 
-        a = 0
 
-        for item in items:
-            timeMessages.append('secondd try: %s' % str(a))
-            a = a+1
+       
 
         params['timeMessages'] = timeMessages
         # for item in items:
@@ -422,18 +483,42 @@ class Blog(Handler):
 
         if current_user is not None:
             params['user'] = current_user
+            logging.info('current user is : %s' % current_user)
 
         self.render('blog.html', **params)
 
 
     def post(self):
-        logging.info('****************************************************** blog POST')
         user = self.loggedInUser()
-        logging.info('user editing : %s' % user)
         if user:
             # self.render('blog.html', user = user)
             edit_postID = self.request.get('edit_postID')
             editButton = self.request.get('editButton')
+
+            like_postID = self.request.get('like_postID')
+            likeButton = self.request.get('likeButton')
+
+            if likeButton :
+                comment = db.get(edit_postID)
+                userEntity = db.GqlQuery("SELECT * FROM User WHERE name = '%s'" % user, read_policy=db.STRONG_CONSISTENCY).get()
+                if likeButton == 'liked was pressed':
+                    
+                    
+                    like = Lajk(parent = comment, user = userEntity, comment = comment)
+
+                    like.put()
+                    self.redirect('/blog')
+                else : # == 'unlike was pressed'
+                    theLike = Lajk.all().ancestor(comment.key()).filter('user =', userEntity).get()
+                    if theLike :
+                        theLike.delete()
+
+                    self.redirect('/blog')
+            else :
+                logging.info('like was NOT pressed!')
+
+
+
             logging.info('editButton = %s' % editButton)
             item = db.get(edit_postID)
             logging.info('edit postID : %s' % edit_postID)
